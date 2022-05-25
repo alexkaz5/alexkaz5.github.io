@@ -1,0 +1,39 @@
+---
+- name: "Add IP address to Welcome screen"
+  hosts: all
+  become: yes
+  vars:
+   path_to_file: /tmp/ansscripts
+   src_file: /root/playbooks/chissue.sh
+   dest_file: /tmp/ansscripts/chissue.sh
+
+  tasks:
+   - name: Check version Linux
+     debug: var=ansible_os_family
+
+   - name: Check exists directory /tmp/ansscripts
+     stat:
+     path: "{{ path_to_file }}"
+     register: folder_exist
+
+   - name: Create directory  /tmp/ansscripts  if not exists
+     file:
+     path: "{{ path_to_file }}"
+     state: directory
+     when:  folder_exist.stat.exists == false
+
+   - name: Copy file to remote hosts
+     copy:
+      src: "{{ src_file }}"
+      dest: "{{ dest_file }}"
+      mode: '0755'
+      when: folder_exist.stat.exists == true
+
+   - name: Execute script "{{ src_file }}"
+     become: yes
+     script: /tmp/ansscripts/chissue.sh
+     registre: console
+   
+   - debug: msg="{{ console.stdout }}"
+
+   - debug: msg="{{ console.stderr }}"

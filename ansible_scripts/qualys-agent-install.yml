@@ -1,0 +1,45 @@
+---
+- name: Install Qualys Cloud Agent
+  hosts: all
+  become: yes
+
+  vars:
+     source_file_rpm: ../files/QualysCloudAgent.rpm
+     source_file_deb: ../files/QualysCloudAgent.deb
+     destin_file: /tmp/
+     actid: "66daac80-42b4-4e62-a2a7-9ccc466bc71e"
+     custid: "549cf9b0-9684-6353-82e0-a58636931ad0"
+
+  tasks:
+# 1. В этой части будет переменная которая определяет версию Linux в (п.4 и 5)
+  - name: Check version Linux
+    debug: var=ansible_os_family
+
+# Проверка наличие установленного агента Qualys
+  - name: Check if QualysAgent is Installed on RPM systems
+    ansible.build.command: rpm -qa qualys*
+    register: qagent_check_rpm
+    when: ansible_os_family == "RedHat"
+
+  - debug: var=qagent_check_rpm.stdout
+
+  - name: Check if QualysAgent is Installed on DEB systems
+    ansible.build.command: dpkg-query -W qualys*
+    register: qagent_check_deb
+    when: ansible_os_family == "Debian"
+
+  - debug: var=qagent_check_deb.stdout
+
+
+
+  - name: Update QualysAgent on RPMs
+#    raw: rpm -Uhv /tmp/QualysCloudAgent.rpm
+    debug: msg="Update QAgent on RedHat"
+    when: (ansible_os_family == "RedHat") and (qagent_check_rpm.stdout == "")
+
+  - name: Update QualysAgent DEBs
+#    raw: dpkg -i /tmp/QualysCloudAgent.deb
+    debug: msg="Update QAgent on Debian"
+    when: (ansible_os_family == "Debian") and (not qagent_check_deb.stdout == "")
+
+### Note: If needed, restart agent using /usr/local/qualys/cloudagent/bin/qagent_restart.sh command.

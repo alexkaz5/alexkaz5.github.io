@@ -1,0 +1,35 @@
+
+---
+- name: Replace nginx.conf on LB DNS servers
+  hosts: all
+  become: yes
+
+  vars:
+    source_file: ../files/nginx.conf
+    dest_path: /etc/nginx
+
+  tasks:
+  - name: Check filder exist
+    stat:
+     path: "{{ dest_path }}"
+    register: folder_exist
+
+  - name: "Copy conf-file NGINX"
+    copy:
+     src: '{{ source_file }}'
+     dest: '{{dest_path }}'
+     mode: '0640'
+     backup: yes
+    when: folder_exist.stat.isdir is defined and folder_exist.stat.isdir
+
+  - name: "Check config file for errors"
+    shell: "/usr/sbin/nginx -t"
+    register: err_check_nginx
+
+  - name: "Service NGINX reload config"
+    shell: "/usr/sbin/nginx -s reload"
+    when: err_check_nginx.rc == 0
+
+#    when: folder_exist.stat.exists == true
+
+...
