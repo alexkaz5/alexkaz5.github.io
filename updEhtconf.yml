@@ -1,0 +1,84 @@
+---
+- name: "Replace namesrevers and Domain-search"
+  hosts: all
+  become: yes
+  become_method: sudo
+
+  tasks:
+   - name: Replace network settings on CentOS
+     block:
+
+#----------- для дебага ------------------------------------------------------------
+#     - name: Get content network-script file BEFOR
+#       command: cat /etc/sysconfig/network-scripts/ifcfg-'{{ ansible_default_ipv4.interface }}'
+#       register: result
+
+#     - name: Show content network-script file BEFOR
+#       debug:
+#         var: result.stdout_lines
+#----------------------------------------------------------------------------------
+
+     - name: Replace doman-search
+       lineinfile:
+         path: /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
+         regexp: '^DOMAIN'
+         line: 'DOMAIN=corp.mvideo.ru'
+         backup: yes
+
+     - name: Delete old DNS records
+       lineinfile:
+         path: /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
+         search_string: "{{ item }}"
+         state: absent
+       loop:
+            - "DNS1="
+            - "DNS2="
+            - "DNS3="
+
+     - name: Append new DNS records
+       lineinfile:
+         path: /etc/sysconfig/network-scripts/ifcfg-{{ ansible_default_ipv4.interface }}
+         insertbefore: 'EOF'
+         line: "{{ item }}"
+         state: present
+       loop:
+            - "DNS1=10.95.1.143"
+            - "DNS2=10.95.0.9"
+
+     - name: Replace domain-search in resolv.conf
+       lineinfile:
+         path: /etc/resolv.conf
+         search_string: "search"
+         line: "search corp.mvideo.ru"
+         backup: yes
+     - name: Delete nameservers in resolv.conf
+       lineinfile:
+         path: /etc/resolv.conf
+         search_string: "{{ item }}"
+         state: absent
+       loop:
+         - "nameserver"
+#        - "nameserver 10.95.0.8"   ## раскомментировать если
+#        - "nameserver 10.95.0.9"   ## необходимо удалить конкретно
+#        - "nameserver 10.95.0.10"  ## данные ДНС сервера
+
+     - name: Append new nameserver in resolv.conf
+       lineinfile:
+         path: /etc/resolv.conf
+         insertafter: '^search'
+         line: "nameserver 10.95.1.143 \nnameserver 10.95.0.9 \n"
+
+     when: ansible_os_family == "RedHat"
+
+
+
+
+#----------- для дебага ------------------------------------------------------------
+#     - name: Get content network-script file AFTER
+#       command: cat /etc/sysconfig/network-scripts/ifcfg-'{{ ansible_default_ipv4.interface }}'
+#       register: result
+
+#     - name: Show content network-script file AFTER
+#       debug:
+#         var: result.stdout_lines
+#----------------------------------------------------------------------------------

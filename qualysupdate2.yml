@@ -1,0 +1,60 @@
+---
+- name: Install Qualys Cloud Agent
+  hosts: all
+  become: yes
+#  become_user: mvid-atg
+#  become_method: sudo
+
+  vars:
+     source_file_rpm: ../files/QualysCloudAgent.rpm
+     source_file_deb: ../files/QualysCloudAgent.deb
+     src_file_proxy: ../files/qualys
+     destin_file: /tmp/
+     actid: "66daac80-42b4-4e62-a2a7-9ccc466bc71e"
+     custid: "549cf9b0-9684-6353-82e0-a58636931ad0"
+
+  tasks:
+# 1. В этой части будет переменная которая определяет версию Linux в (п.4 и 5)
+  - name: Check version Linux
+    debug: var=ansible_os_family
+
+# 2. Для установки на Debian и CentOS используем when: условия для (п.4 и 5)
+
+# 3. Блок отвечающий за копирование файлов в папку tmp на удаленном сервере из files
+  - name: Copy files package "{{ source_file_rpm }}"  to CentOS/RedHat
+    copy: src={{ source_file_rpm }} dest={{ destin_file }}
+    when: ansible_os_family== "RedHat"
+
+  - name: Copy config for proxy
+    copy: src={{ src_file_proxy }} dest="/etc/sysconfig/qualys-cloud-agent" owner=root mode=0600
+    when: ansible_os_family=="RedHat"
+
+  - name: Copy package files "{{ source_file_deb }}" to Debian/Ubuntu
+    copy: src={{ source_file_deb }} dest={{ destin_file }}
+    when: ansible_os_family== "Debian"
+
+# 4. Устанавливаем QualysCloudAgent
+
+  - name: Update QualysAgent on RPMs
+    raw: rpm -Uhv /tmp/QualysCloudAgent.rpm
+    when: ansible_os_family == "RedHat"
+
+  - name: Update QualysAgent DEBs
+    raw: dpkg -i /tmp/QualysCloudAgent.deb
+    when: ansible_os_family == "Debian"
+
+# 5. Донастройка агента Qualys после установки
+  - name: Re-settings QualysCloudAgent on hosts
+    raw: /usr/local/qualys/cloud-agent/bin/qualys-cloud-agent.sh ActivationId=66daac80-42b4-4e62-a2a7-9ccc466bc71e CustomerId=549cf9b0-9684-6353-82e0-a58636931ad0
+    args:
+     executable: /bin/bash
+    notify: Restart QualysCloudAgent
+
+# 6. Этот блок отвечает за запуск сервиса
+  - name: Start service QualysCloudAgent
+    service: name=qualys-cloud-agent state=started enabled=yes
+
+# 7. Добавим handlers для указания якоря "Restart QualysCloudAgent service CentOS/Debian", для п.5
+  handlers:
+  - name: Restart QualysCloudAgent
+    service: name=qualys-cloud-agent state=restarted

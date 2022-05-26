@@ -1,0 +1,38 @@
+---
+
+ - name: Change DNS on host
+   become: yes
+   hosts: all
+
+   tasks:
+
+   - name: Print item
+     debug:
+       msg: '{{ ansible_default_ipv4.interface }}'
+
+   - name: Print DNS IP
+     debug:
+       msg: '{{ ansible_dns.nameservers }}'
+
+   - name: Print DNS search
+     debug:
+       msg: '{{ ansible_dns.search }}'
+
+   - name: Try nmcli modify DNS on interface
+     command: nmcli connection modify '{{ ansible_default_ipv4.interface }}' ipv4.dns "10.95.1.143 10.95.0.9" ipv4.dns-search "corp.mvideo.ru"     
+     notify: Restart NM
+     when: ansible_os_family == "RedHat"
+
+#   - name: Print DNS search
+#     debug:
+#       msg: '{{ ansible_dns.search }}'
+
+   handlers:
+   - name: Restart NM
+     service: name=NetworkManager state=restarted
+     when: ansible_os_family == "RedHat"
+
+
+#   - name: Restart networking
+#     service: name=networking state=restarted
+#     when: ansible_os_family == "Debian"
